@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evgeny Revin — Tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Unbounded:wght@300;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* Палитра: основной акцент = выделение в UI Maya (#5285a6); остальное = style.py */
+:root{
+  --bg:#1c1c1c;      /* TITLE_BG */
+  --pic:#1f1f1f;     /* PIC_BG   */
+  --panel:#232323;
+  --panel2:#2a2a2a;
+  --btn:#424242;     /* BTN      */
+  --line:#353535;
+  --text:#e2e2e2; --muted:#9a9a9a; --dim:#6a6a6a;
+  --acc:#5285a6;     /* Maya highlight — основной */
+  --acc-hi:#7fb4d6;  /* он же, светлее, для текста на тёмном */
+  --sup:#8561b8;     /* SUPPORT  — фиолетовый, второстепенный */
+  --loc:#4c8ccc;     /* SYSTEM   — синий      */
+  --con:#61b86b;     /* CONSTR   — зелёный    */
+  --acr:#d19447;     /* ACROSS   — оранжевый  */
+  --st-done:#4cb859; --st-assigned:#ccad40;
+  --red:#cc4747;     /* ST_ERROR — бегунок таймлайна */
+  --mono:'JetBrains Mono',ui-monospace,monospace; --sans:'Inter',system-ui,sans-serif; --disp:'Unbounded','Inter',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{padding-bottom:56px;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.5;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-2;
+  background:radial-gradient(900px 600px at 0% 0%,rgba(82,133,166,.10),transparent 60%),
+             radial-gradient(800px 600px at 100% 100%,rgba(133,97,184,.07),transparent 60%)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;opacity:.55;
+  background-image:linear-gradient(#232323 1px,transparent 1px),linear-gradient(90deg,#232323 1px,transparent 1px);
+  background-size:48px 48px}
+body>main::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px)}
+a{color:inherit;text-decoration:none}
+
+/* HUD-уголки: .hud получает скобки в углах */
+.hud{position:relative}
+.hud::before,.hud::after{content:"";position:absolute;width:14px;height:14px;pointer-events:none;transition:.25s;border-color:var(--acc)}
+.hud::before{top:-1px;left:-1px;border-top:2px solid;border-left:2px solid;border-top-left-radius:inherit}
+.hud::after{bottom:-1px;right:-1px;border-bottom:2px solid;border-right:2px solid;border-bottom-right-radius:inherit}
+.hud:hover::before,.hud:hover::after{width:28px;height:28px;filter:drop-shadow(0 0 6px var(--acc))}
+.wrap{max-width:1440px;margin:0 auto;padding:0 40px}
+
+/* header */
+header{position:sticky;top:0;z-index:10;background:rgba(28,28,28,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;gap:48px;height:64px}
+header .lang{margin-left:auto}
+.logo{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--text)}
+.logo span{color:var(--acc-hi);font-weight:400}
+nav{display:flex;gap:28px}
+nav a{color:var(--muted);font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;transition:.15s}
+nav a:hover{color:var(--acc-hi)}
+.lang{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.lang button{background:none;border:0;color:var(--dim);font-family:var(--mono);font-size:12px;padding:6px 14px;cursor:pointer}
+.lang button.on{background:rgba(82,133,166,.2);color:var(--acc-hi);font-weight:700}
+
+/* таймлайн Maya внизу окна */
+.tl{position:fixed;left:0;right:0;bottom:0;z-index:20;height:56px;background:linear-gradient(#262626 0 40px,#1c1c1c 40px);border-top:1px solid #3a3a3a;box-shadow:0 -6px 20px rgba(0,0,0,.4);cursor:ew-resize;user-select:none;touch-action:none}
+.tl-ticks{position:absolute;inset:0 0 16px 0}
+.tl-tick{position:absolute;bottom:0;width:1px;height:5px;background:#5a5a5a}
+.tl-tick.m{height:9px;background:#7a7a7a}
+.tl-tick.l{height:13px;background:#9a9a9a}
+.tl-num{position:absolute;top:6px;font-family:var(--mono);font-size:10px;color:var(--dim);transform:translateX(3px)}
+.tl-key{position:absolute;bottom:0;width:3px;height:15px;background:var(--c);box-shadow:0 0 6px var(--c);cursor:pointer}
+.tl-key::after{content:attr(data-label);position:absolute;bottom:16px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:9px;
+  letter-spacing:.1em;color:var(--c);white-space:nowrap;opacity:0;transition:.15s;text-transform:uppercase}
+.tl:hover .tl-key::after{opacity:1}
+.tl-head{position:absolute;top:0;bottom:16px;width:2px;background:var(--red);box-shadow:0 0 8px var(--red);pointer-events:none}
+.tl-head span{position:absolute;top:5px;left:3px;background:var(--red);color:#fff;font-family:var(--mono);font-size:10px;font-weight:700;padding:0 4px;border-radius:2px}
+.tl-range{position:absolute;right:10px;top:12px;font-family:var(--mono);font-size:10px;color:var(--dim);background:#262626;padding-left:8px}
+
+/* hero */
+.hero{text-align:center;padding:90px 0 70px;position:relative;isolation:isolate}
+.reticle{position:absolute;left:50%;top:52%;width:760px;height:760px;transform:translate(-50%,-50%);z-index:-1;pointer-events:none;opacity:.55}
+.reticle .r1{animation:spin 60s linear infinite;transform-origin:50% 50%}
+.reticle .r2{animation:spin 90s linear infinite reverse;transform-origin:50% 50%}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lockup{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:34px}
+.lockup .mark{width:58px;height:58px}
+.lk-t{display:flex;flex-direction:column;text-align:left;line-height:1}
+.lk-t span{font-size:22px;font-weight:300;letter-spacing:.14em;color:var(--text)}
+.lk-t b{font-size:26px;font-weight:800;letter-spacing:.1em;color:var(--text);margin-top:4px}
+h1{font-family:var(--disp);font-size:clamp(34px,5.6vw,68px);font-weight:300;line-height:1.12;margin:22px 0 26px;letter-spacing:-.01em}
+h1 b{display:block;font-weight:800;color:var(--acc-hi);text-shadow:0 0 28px rgba(82,133,166,.55)}
+.sub{color:var(--muted);font-size:18px;max-width:620px;margin:0 auto}
+.stats{display:flex;justify-content:center;gap:14px;margin-top:48px;flex-wrap:wrap}
+.stat{background:rgba(35,35,35,.8);border:1px solid var(--line);min-width:210px;padding:18px 24px;border-radius:4px;--acc:var(--c)}
+.stat b{display:block;font-family:var(--mono);font-size:32px;color:var(--c);text-shadow:0 0 14px var(--c)}
+.stat span{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.stat:nth-child(1){--c:var(--acc-hi)} .stat:nth-child(2){--c:var(--acr)} .stat:nth-child(3){--c:var(--con)}
+
+/* section header: // ЗАГОЛОВОК ———— */
+section{padding:40px 0 70px;scroll-margin-top:80px}
+.h2{display:flex;align-items:center;gap:16px;font-family:var(--mono);font-size:15px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:28px}
+.h2>span{position:relative;color:#fff;font-weight:700;letter-spacing:.22em;padding:9px 30px 9px 22px;
+  background:linear-gradient(100deg,rgba(82,133,166,.95),rgba(82,133,166,.55) 45%,rgba(133,97,184,.75));
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%,8px 50%);
+  text-shadow:0 0 10px rgba(255,255,255,.45);filter:drop-shadow(0 0 10px rgba(82,133,166,.55))}
+.h2>span::after{content:"";position:absolute;left:8px;right:14px;top:3px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent)}
+.h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--acc),var(--line) 30%,var(--line))}
+.h2 small{order:3;font-size:11px;letter-spacing:.12em;color:var(--dim)}
+.h2 small::before{content:"";display:inline-block;width:6px;height:6px;margin-right:8px;background:var(--acc);box-shadow:0 0 8px var(--acc);animation:blink 1.6s steps(2) infinite}
+@keyframes blink{50%{opacity:.15}}
+
+/* thumbnails (заглушка, пока нет картинок) */
+.thumb{position:relative;aspect-ratio:16/9;border-radius:3px;overflow:hidden;border:1px solid var(--line);
+  background:linear-gradient(135deg,#26313a,#1f1f1f 60%,#2a2433);display:grid;place-items:center;font-size:40px}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+/* обновления: лог ключевых кадров */
+.keys{position:relative;padding-left:40px}
+.keys::before{content:"";position:absolute;left:13px;top:6px;bottom:6px;width:2px;
+  background:linear-gradient(var(--acc),rgba(133,97,184,.6),transparent)}
+.key{position:relative;display:grid;grid-template-columns:150px 1fr auto;gap:24px;align-items:center;
+  padding:18px 22px;margin-bottom:10px;background:linear-gradient(90deg,rgba(82,133,166,.08),rgba(35,35,35,.6) 40%);
+  border:1px solid var(--line);border-radius:4px;transition:.2s}
+.key:hover{border-color:var(--acc);background:linear-gradient(90deg,rgba(82,133,166,.16),rgba(35,35,35,.7) 50%)}
+.key::before{content:"";position:absolute;left:-33px;top:50%;width:12px;height:12px;transform:translateY(-50%) rotate(45deg);
+  background:var(--bg);border:2px solid var(--kc,var(--acc));box-shadow:0 0 10px var(--kc,var(--acc))}
+.key:first-child::before{background:var(--kc,var(--acc));animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 22px var(--kc,var(--acc))}}
+.key .when{font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.6}
+.key .when b{display:block;font-size:10px;letter-spacing:.18em;color:var(--kc,var(--acc-hi))}
+.key .t{font-family:var(--disp);font-weight:600;font-size:16px}
+.key .t code{font-family:var(--mono);font-size:11px;color:var(--acc-hi);border:1px solid var(--acc);padding:1px 7px;border-radius:3px;margin-left:10px;vertical-align:2px}
+.key p{color:var(--muted);font-size:14px;margin-top:4px}
+.key .go{font-family:var(--mono);font-size:18px;color:var(--dim);transition:.2s}
+.key:hover .go{color:var(--acc-hi);transform:translateX(4px)}
+
+/* search + filters */
+.search{width:100%;background:rgba(35,35,35,.85);border:1px solid var(--line);border-radius:4px;padding:16px 24px;
+  color:var(--text);font-family:var(--sans);font-size:17px;outline:none;margin-bottom:22px;transition:.15s}
+.search::placeholder{color:var(--dim)}
+.search:focus{border-color:var(--acc)}
+.filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:28px}
+.filters button{background:transparent;border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:13px;
+  letter-spacing:.14em;text-transform:uppercase;padding:9px 20px;border-radius:3px;cursor:pointer;transition:.15s}
+.filters button:hover{color:var(--text);border-color:var(--sup)}
+.filters button.on{color:var(--acc-hi);background:rgba(82,133,166,.15);border-color:var(--acc);font-weight:700;box-shadow:0 0 14px rgba(82,133,166,.35)}
+
+/* tool cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:24px}
+.card{background:rgba(35,35,35,.85);border:1px solid var(--line);border-radius:4px;padding:24px;display:flex;flex-direction:column;gap:16px;transition:.2s}
+.card:hover{border-color:var(--acc);box-shadow:0 12px 40px rgba(82,133,166,.12)}
+.card h3{font-family:var(--disp);font-size:18px;font-weight:600}
+.card p{color:var(--muted);font-size:15px;flex:1}
+.badge{position:absolute;top:12px;right:12px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;padding:4px 12px;border-radius:999px;text-transform:uppercase;backdrop-filter:blur(4px)}
+.badge.new{color:var(--acc-hi);background:rgba(82,133,166,.25);border:1px solid var(--acc)}
+.badge.upd{color:#c9b3ea;background:rgba(133,97,184,.25);border:1px solid var(--sup)}
+.tags{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tag{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--line);padding:3px 10px;border-radius:6px}
+.tag.v{color:var(--acc-hi);border-color:var(--acc);background:rgba(82,133,166,.1);font-weight:700}
+.tags .btn{margin-left:auto}
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--acc-hi);background:rgba(82,133,166,.12);border:1px solid var(--acc);padding:9px 16px;border-radius:8px;cursor:pointer;transition:.15s}
+.btn:hover{background:rgba(82,133,166,.28)}
+.btn-x{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:10px;cursor:pointer;border:0;
+  font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#fff;
+  padding:12px 34px 12px 24px;
+  background:linear-gradient(100deg,var(--acc),var(--sup) 50%,var(--acc));background-size:200% 100%;background-position:0 0;
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+  text-shadow:0 0 10px rgba(255,255,255,.5);filter:drop-shadow(0 0 12px rgba(82,133,166,.5));transition:background-position .4s,filter .25s}
+.btn-x::before{content:"";position:absolute;inset:1px;clip-path:inherit;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.18),transparent 45%)}
+.btn-x::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:40%;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-20deg);animation:sweep 3.5s ease-in-out infinite}
+@keyframes sweep{0%,60%{left:-60%}100%{left:130%}}
+.btn-x:hover{background-position:100% 0;filter:drop-shadow(0 0 18px rgba(133,97,184,.7))}
+.btn-x #moreArr{font-size:15px;line-height:1}
+.empty{color:var(--dim);font-family:var(--mono);font-size:13px}
+
+/* about */
+.about{background:rgba(35,35,35,.85);border:1px solid var(--line);border-radius:4px;padding:44px 50px}
+.about .row{display:grid;grid-template-columns:170px 1fr;gap:40px;align-items:center}
+.avatar{width:166px;height:166px;border-radius:50%;background:var(--pic);border:3px solid var(--acc);box-shadow:0 0 0 8px rgba(82,133,166,.12);
+  display:grid;place-items:center;font-family:var(--mono);font-size:46px;font-weight:700;color:var(--acc-hi);object-fit:cover}
+.about h3{font-family:var(--disp);font-size:24px;font-weight:300;margin-bottom:10px}
+.about h3 em{font-style:normal;font-weight:600;color:var(--acc-hi);text-shadow:0 0 18px rgba(82,133,166,.5)}
+.about .role{font-family:var(--mono);font-size:13px;color:var(--text);margin-bottom:6px}
+.about .skills{font-family:var(--mono);font-size:12px;color:var(--acr);margin-bottom:22px}
+.cv{display:none;margin-top:26px;padding-top:6px}
+.cv.open{display:block}
+.cv h4{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--acc-hi);margin:18px 0 10px}
+.cv ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+.cv li{color:var(--muted);font-size:15px;padding-left:16px;position:relative}
+.cv li::before{content:"";position:absolute;left:2px;top:10px;width:5px;height:5px;border-radius:50%;background:var(--sup)}
+.cv li b{color:var(--text);font-weight:600}
+.about hr{border:0;height:1px;background:var(--line);margin:32px 0 26px}
+.links{display:flex;flex-wrap:wrap;gap:12px}
+.links a{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;border:1px solid var(--line);background:var(--panel2);
+  padding:10px 18px;border-radius:8px;color:var(--muted);transition:.15s}
+.links a:hover{color:var(--acc-hi);border-color:var(--acc)}
+
+footer{border-top:1px solid var(--line);padding:30px 0;text-align:center;font-family:var(--mono);font-size:12px;color:var(--dim)}
+
+@media(max-width:720px){
+  .wrap{padding:0 18px}
+  nav{display:none}
+  .stat{min-width:0;flex:1}
+  .grid{grid-template-columns:1fr}
+  .about{padding:28px 22px}
+  .about .row{grid-template-columns:1fr}
+  .key{grid-template-columns:1fr;gap:6px}
+  .key .go{display:none}
+  .reticle{width:480px;height:480px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a href="#" class="logo">e.revin<span>.tech</span></a>
+    <nav>
+      <a href="#software" data-i18n="nav_soft"></a>
+      <a href="#news" data-i18n="nav_news"></a>
+      <a href="#about" data-i18n="nav_about"></a>
+    </nav>
+    <div class="lang">
+      <button data-lang="en">EN</button>
+      <button data-lang="ru">RU</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <svg class="reticle" viewBox="0 0 400 400" aria-hidden="true">
+      <g class="r1" fill="none" stroke="#5285a6">
+        <circle cx="200" cy="200" r="190" stroke-width=".6" stroke-dasharray="2 6"/>
+        <circle cx="200" cy="200" r="150" stroke-width=".8" stroke-dasharray="60 14 4 14" opacity=".7"/>
+      </g>
+      <g class="r2" fill="none" stroke="#8561b8">
+        <circle cx="200" cy="200" r="170" stroke-width=".6" stroke-dasharray="1 3" opacity=".8"/>
+        <path d="M200 6v18M200 376v18M6 200h18M376 200h18" stroke-width="1.2"/>
+      </g>
+      <circle cx="200" cy="200" r="120" fill="none" stroke="#5285a6" stroke-width=".4" opacity=".4"/>
+    </svg>
+    <div class="lockup">
+      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+        <rect x="2" y="2" width="60" height="60" rx="8" fill="#2a2a2a"/>
+        <path d="M16 46 L28 22 L46 34" fill="none" stroke="#9a9a9a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="16" cy="46" r="6" fill="#4c8ccc"/>
+        <circle cx="28" cy="22" r="6" fill="#8561b8"/>
+        <circle cx="46" cy="34" r="6" fill="#61b86b"/>
+        <circle cx="46" cy="34" r="11" fill="none" stroke="#d19447" stroke-width="2"/>
+      </svg>
+      <div class="lk-t"><span>AUTODESK</span><b>MAYA</b></div>
+    </div>
+    <h1><span data-i18n="h1a"></span><b data-i18n="h1b"></b></h1>
+    <p class="sub" data-i18n="sub"></p>
+    <div class="stats">
+      <div class="stat hud"><b id="toolCount">0</b><span data-i18n="st1"></span></div>
+      <div class="stat hud"><b>100%</b><span data-i18n="st2"></span></div>
+      <div class="stat hud"><b>0</b><span data-i18n="st3"></span></div>
+    </div>
+  </div>
+
+  <section id="news">
+    <div class="h2"><span data-i18n="news_h"></span><small>SEC_01 · KEYS</small></div>
+    <div class="keys" id="newsList"></div>
+  </section>
+
+  <section id="software">
+    <div class="h2"><span data-i18n="soft_h"></span><small>SEC_02 · TOOLS</small></div>
+    <input class="search" id="search" type="text" data-i18n-ph="search">
+    <div class="filters" id="filters"></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section id="about">
+    <div class="h2"><span data-i18n="about_h"></span><small>SEC_03 · OPERATOR</small></div>
+    <div class="about hud">
+      <div class="row">
+        <!-- Чтобы поставить фото: замените div на <img class="avatar" src="img/me.jpg" alt=""> -->
+        <div class="avatar">ER</div>
+        <div>
+          <h3><span data-i18n="hello"></span> <em data-i18n="name"></em></h3>
+          <div class="role" data-i18n="role"></div>
+          <div class="skills" data-i18n="skills"></div>
+          <button class="btn-x" id="moreBtn"><span id="moreLbl"></span> <span id="moreArr">›</span></button>
+        </div>
+      </div>
+      <div class="cv" id="cv" data-i18n-html="cv"></div>
+      <hr>
+      <div class="links">
+        <a href="https://github.com/Animation-Miner" target="_blank">GitHub</a>
+        <a href="https://www.artstation.com/" target="_blank">ArtStation</a>
+        <a href="https://www.youtube.com/" target="_blank">YouTube</a>
+        <a href="mailto:anim.miner@gmail.com">Email</a>
+        <a href="https://t.me/" target="_blank" data-i18n="tg_channel"></a>
+        <a href="https://t.me/" target="_blank" data-i18n="tg_personal"></a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer data-i18n="footer"></footer>
+
+<!-- таймлайн Maya внизу окна -->
+<div class="tl" id="tl">
+    <div class="tl-ticks" id="tlTicks"></div>
+    <div class="tl-head" id="tlHead"><span id="tlFrame">1</span></div>
+</div>
+
+<script>
+/* ============================================================
+   ДАННЫЕ. Редактируйте только этот блок.
+   У инструмента можно указать img:"img/tool1.jpg" — картинка карточки (16:9).
+   ============================================================ */
+const GH = "https://github.com/Animation-Miner";
+
+const TOOLS = [
+  {
+    id:"tool1", icon:"🛠", badge:"new",
+    name:"Tool 1", version:"0.1", date:"2026-11-09",
+    cats:["maya","python"], tags:["Maya","Python"],
+    desc:{ru:"Описание скоро.", en:"Description coming soon."},
+    url: GH
+  },
+  {
+    id:"tool2", icon:"🛠", badge:"upd",
+    name:"Tool 2", version:"0.1", date:"2026-11-09",
+    cats:["maya","mel"], tags:["Maya","MEL"],
+    desc:{ru:"Описание скоро.", en:"Description coming soon."},
+    url: GH
+  },
+  {
+    id:"tool3", icon:"🛠", badge:"",
+    name:"Tool 3", version:"0.1", date:"2026-11-09",
+    cats:["maya","python"], tags:["Maya","Python"],
+    desc:{ru:"Описание скоро.", en:"Description coming soon."},
+    url: GH
+  },
+  {
+    id:"tool4", icon:"🛠", badge:"",
+    name:"Tool 4", version:"0.1", date:"2026-11-09",
+    cats:["web"], tags:["Browser","HTML"],
+    desc:{ru:"Описание скоро.", en:"Description coming soon."},
+    url: GH
+  }
+];
+
+const NEWS = [
+  {date:"2026-11-09", tool:"tool1", version:"0.1",
+   text:{ru:"Заглушка новости.", en:"Placeholder news."}},
+  {date:"2026-11-09", tool:"tool2", version:"0.1",
+   text:{ru:"Заглушка новости.", en:"Placeholder news."}}
+];
+
+const FILTERS = [
+  {id:"all",    ru:"Все",    en:"All"},
+  {id:"maya",   ru:"Maya",   en:"Maya"},
+  {id:"python", ru:"Python", en:"Python"},
+  {id:"mel",    ru:"MEL",    en:"MEL"},
+  {id:"web",    ru:"Web",    en:"Web"}
+];
+
+const I18N = {
+  ru:{nav_soft:"tools",nav_news:"updates",nav_about:"about the author",
+      h1a:"Инструменты для",h1b:"анимации и рига",
+      sub:"Скрипты и утилиты, которые я написал для своего продакшна. Скачивайте и пользуйтесь.",
+      st1:"Отрицаний вайбкодинга",st2:"Уволено",st3:"Индекс цифрового счастья",
+      news_h:"Обновления",soft_h:"Maya tools",about_h:"Обо мне",
+      name:"Евгений Ревин",role:"3D-аниматор · технический аниматор · риггер · R&D",
+      skills:"animation, character animation, rig, Unreal Engine\\Unity anim assets, MEL\\PY scripting.",
+      tg_channel:"Telegram-канал",tg_personal:"Telegram",
+      cv:"<h4>Навыки</h4><ul><li><b>Анимация:</b> персонажи, существа, техника и механизмы, анимация для игр.</li><li><b>Техническая анимация:</b> риггинг и скиннинг, очистка и ретаргетинг мокапа, перенос анимации в Unreal Engine и Unity.</li><li><b>Скриптинг:</b> MEL и Python, инструменты и автоматизация в Maya, разработка пайплайнов.</li></ul><h4>Опыт</h4><ul><li><b>2024–2026, Fear of Faith (инди, Steam): ведущий и технический аниматор.</b> Риг персонажей, оружия и объектов, анимация, очистка мокапа. Адаптация MetaHuman под игровой пайплайн, поддержка пайплайна.</li><li><b>2019–2024, студия WOW-HOW: технический аниматор и дженералист.</b> Рекламные ролики для Wargaming (World of Tanks Blitz) и Plarium (Raid: Shadow Legends, Magic Wars). Делал идеи, сценарии, раскадровки и превиз. WoT Blitz: риги танков и физика поведения, скрипты для пайплайна и отдела VFX, анимация.</li><li><b>2018–по настоящее время, фриланс:</b> анимация, риг.</li></ul>",
+      hello:"Привет, я",more:"Подробнее обо мне",less:"Свернуть",search:"Поиск по инструментам…",empty:"Ничего не найдено.",
+      download:"Скачать",badge_new:"Новое",badge_upd:"Обновлено",
+      footer:"© Evgeny Revin Tech. All rights reserved"},
+  en:{nav_soft:"tools",nav_news:"updates",nav_about:"about the author",
+      h1a:"Tools for",h1b:"animation & rigging",
+      sub:"Scripts and utilities I built for my own production. Download and use them.",
+      st1:"Vibecoding denials",st2:"Fired",st3:"Digital happiness index",
+      news_h:"Updates",soft_h:"Maya tools",about_h:"About",
+      name:"Evgeny Revin",role:"3D animator · technical animator · rigger · R&D",
+      skills:"animation, character animation, rig, Unreal Engine\\Unity anim assets, MEL\\PY scripting.",
+      tg_channel:"Telegram channel",tg_personal:"Telegram",
+      cv:"<h4>Skills</h4><ul><li><b>Animation:</b> characters, creatures, vehicles and mechanisms, game animation.</li><li><b>Technical animation:</b> rigging and skinning, mocap cleanup and retargeting, animation export to Unreal Engine and Unity.</li><li><b>Scripting:</b> MEL and Python, Maya tools and automation, pipeline development.</li></ul><h4>Experience</h4><ul><li><b>2024–2026, Fear of Faith (indie, Steam): lead &amp; technical animator.</b> Rigging of characters, weapons and props, animation, mocap cleanup. MetaHuman adaptation for the game pipeline, pipeline support.</li><li><b>2019–2024, WOW-HOW studio: technical animator &amp; generalist.</b> Promo videos for Wargaming (World of Tanks Blitz) and Plarium (Raid: Shadow Legends, Magic Wars). Ideas, scripts, storyboards and previs. WoT Blitz: tank rigs and physics behavior, pipeline scripts for the VFX team, animation.</li><li><b>2018–present, freelance:</b> animation, rigging.</li></ul>",
+      hello:"Hi, I'm",more:"More about me",less:"Collapse",search:"Search tools…",empty:"Nothing found.",
+      download:"Download",badge_new:"New",badge_upd:"Updated",
+      footer:"© Evgeny Revin Tech. All rights reserved"}
+};
+/* ============================================================ */
+
+let lang = (()=>{try{return localStorage.getItem("lang")||"ru"}catch(e){return "ru"}})();
+let filter = "all", query = "", cvOpen = false;
+
+function thumb(t){
+  return t.img ? `<img src="${t.img}" alt="">` : (t.icon||"🛠");
+}
+
+function renderGrid(){
+  const T = I18N[lang], q = query.trim().toLowerCase();
+  const list = TOOLS.filter(t=>(filter==="all"||t.cats.includes(filter)) &&
+    (!q || (t.name+" "+t.desc[lang]+" "+t.tags.join(" ")).toLowerCase().includes(q)));
+  document.getElementById("grid").innerHTML = list.length ? list.map(t=>`
+    <div class="card hud">
+      <div class="thumb">${thumb(t)}${t.badge?`<span class="badge ${t.badge}">${T["badge_"+t.badge]}</span>`:""}</div>
+      <h3>${t.name}</h3>
+      <p>${t.desc[lang]}</p>
+      <div class="tags"><span class="tag v">v${t.version}</span>${t.tags.map(g=>`<span class="tag">${g}</span>`).join("")}
+        <a class="btn" href="${t.url}" target="_blank">↓ ${T.download}</a></div>
+    </div>`).join("") : `<div class="empty">${T.empty}</div>`;
+}
+
+function render(){
+  const T = I18N[lang];
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=T[el.dataset.i18n]);
+  document.querySelectorAll("[data-i18n-html]").forEach(el=>el.innerHTML=T[el.dataset.i18nHtml]);
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>el.placeholder=T[el.dataset.i18nPh]);
+  document.querySelectorAll(".lang button").forEach(b=>b.classList.toggle("on",b.dataset.lang===lang));
+  document.getElementById("toolCount").textContent = TOOLS.length;
+  document.getElementById("moreLbl").textContent = cvOpen ? T.less : T.more;
+  document.getElementById("moreArr").textContent = cvOpen ? "⌄" : "›";
+  document.getElementById("cv").classList.toggle("open",cvOpen);
+
+  document.getElementById("newsList").innerHTML = NEWS.map((n,i)=>{
+    const t = TOOLS.find(x=>x.id===n.tool)||{};
+    const kc = t.badge==="upd" ? "var(--sup)" : "var(--acc)";
+    return `<a class="key" style="--kc:${kc}" href="${t.url||'#'}" target="_blank">
+      <div class="when"><b>KEY ${String(NEWS.length-i).padStart(3,"0")}</b>${n.date}</div>
+      <div><div class="t">${t.name||n.tool}<code>v${n.version}</code></div><p>${n.text[lang]}</p></div>
+      <span class="go">→</span></a>`;
+  }).join("");
+
+  document.getElementById("filters").innerHTML = FILTERS.map(f=>
+    `<button class="${f.id===filter?'on':''}" data-f="${f.id}">${f[lang]}</button>`).join("");
+  renderGrid();
+}
+
+document.addEventListener("click",e=>{
+  const l = e.target.closest("[data-lang]");
+  if(l){lang=l.dataset.lang;try{localStorage.setItem("lang",lang)}catch(_){};render();buildTl();}
+  const f = e.target.closest("[data-f]");
+  if(f){filter=f.dataset.f;render();}
+  if(e.target.closest("#moreBtn")){cvOpen=!cvOpen;render();buildTl();}
+});
+/* ---------- таймлайн: кадры 1..END = прокрутка страницы ---------- */
+const TL_END = 120;
+const TL_KEYS = [{id:"news",c:"var(--acc)"},{id:"software",c:"var(--sup)"},{id:"about",c:"var(--con)"}];
+const tl = document.getElementById("tl"), tlTicks = document.getElementById("tlTicks"),
+      tlHead = document.getElementById("tlHead"), tlFrame = document.getElementById("tlFrame");
+const PAD = 14;
+function tlW(){ return tl.clientWidth - PAD*2 - 90; }
+function fx(f){ return PAD + (f-1)/(TL_END-1)*tlW(); }
+function maxScroll(){ return Math.max(1, document.documentElement.scrollHeight - innerHeight); }
+function buildTl(){
+  let h = "";
+  for(let f=1; f<=TL_END; f++){
+    const cls = f%10===0||f===1 ? "l" : f%5===0 ? "m" : "";
+    h += `<div class="tl-tick ${cls}" style="left:${fx(f)}px"></div>`;
+    if(f===1||f%10===0) h += `<div class="tl-num" style="left:${fx(f)}px">${f}</div>`;
+  }
+  TL_KEYS.forEach(k=>{
+    const el = document.getElementById(k.id); if(!el) return;
+    const top = el.getBoundingClientRect().top + scrollY - 100;
+    const f = 1 + Math.min(1,Math.max(0,top/maxScroll()))*(TL_END-1);
+    const lbl = (document.querySelector(`#${k.id} .h2 span`)||{}).textContent||k.id;
+    h += `<div class="tl-key" style="left:${fx(f)-1}px;--c:${k.c}" data-go="${k.id}" data-label="${lbl}"></div>`;
+  });
+  h += `<div class="tl-range">1 – ${TL_END}</div>`;
+  tlTicks.innerHTML = h; syncTl();
+}
+function syncTl(){
+  const p = Math.min(1, Math.max(0, scrollY/maxScroll()));
+  const f = Math.round(1 + p*(TL_END-1));
+  tlHead.style.left = fx(1 + p*(TL_END-1)) + "px"; tlFrame.textContent = f;
+}
+function scrub(e){
+  const r = tl.getBoundingClientRect();
+  const p = Math.min(1, Math.max(0, (e.clientX - r.left - PAD)/tlW()));
+  scrollTo({top: p*maxScroll(), behavior:"instant"});
+}
+let scrubbing = false;
+tl.addEventListener("pointerdown",e=>{
+  const k = e.target.closest("[data-go]");
+  if(k){ document.getElementById(k.dataset.go).scrollIntoView({behavior:"smooth"}); return; }
+  scrubbing = true; tl.setPointerCapture(e.pointerId); scrub(e);
+});
+tl.addEventListener("pointermove",e=>{ if(scrubbing) scrub(e); });
+tl.addEventListener("pointerup",()=>scrubbing=false);
+addEventListener("scroll",syncTl,{passive:true});
+addEventListener("resize",buildTl);
+addEventListener("load",buildTl);
+
+document.getElementById("search").addEventListener("input",e=>{query=e.target.value;renderGrid();});
+render();
+buildTl();
+</script>
+</body>
+</html>
